@@ -46,7 +46,7 @@ def generate_ppt():
         if composer:
             content.append(f"作曲：{composer}")
         if singer:
-            content.append(f"演唱：{singer}")
+            content.append(f"原唱：{singer}")
 
         for line in content:
             p = tf.add_paragraph()
