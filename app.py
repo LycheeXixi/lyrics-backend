@@ -11,9 +11,7 @@ CORS(app)
 
 @app.route('/generate', methods=['POST'])
 def generate_ppt():
-    print("✅ 收到請求了！")
     data = request.get_json()
-    print("📄 歌詞內容：", data)
 
     title = data.get("title", "").strip()
     lyricist = data.get("lyricist", "").strip()
@@ -21,8 +19,21 @@ def generate_ppt():
     singer = data.get("singer", "").strip()
     lyrics = data.get("lyrics", "").strip()
 
+    # 分段落处理，空行分段
+    paragraphs = []
+    current = []
+    for line in lyrics.splitlines():
+        if line.strip() == "":
+            if current:
+                paragraphs.append(current)
+                current = []
+        else:
+            current.append(line.strip())
+    if current:
+        paragraphs.append(current)
+
     prs = Presentation()
-    prs.slide_width = Inches(13.33)  # 16:9
+    prs.slide_width = Inches(13.33)
     prs.slide_height = Inches(7.5)
 
     def add_cover_slide(title, lyricist, composer, singer):
@@ -55,7 +66,7 @@ def generate_ppt():
             run.font.name = 'Microsoft JhengHei'
             run.font.color.rgb = RGBColor(255, 255, 255)
 
-    def add_lyrics_slide(text_lines):
+    def add_lyrics_slide(lines):
         slide = prs.slides.add_slide(prs.slide_layouts[6])
         slide.background.fill.solid()
         slide.background.fill.fore_color.rgb = RGBColor(0, 0, 0)
@@ -65,7 +76,7 @@ def generate_ppt():
         tf.word_wrap = True
         tf.vertical_anchor = MSO_ANCHOR.MIDDLE
 
-        for line in text_lines:
+        for line in lines:
             p = tf.add_paragraph()
             p.alignment = PP_ALIGN.CENTER
             run = p.add_run()
@@ -75,30 +86,13 @@ def generate_ppt():
             run.font.name = 'Microsoft JhengHei'
             run.font.color.rgb = RGBColor(255, 255, 255)
 
-    # 插入封面
+    # 添加封面
     add_cover_slide(title, lyricist, composer, singer)
 
-    # 分段：空行代表换页，每页最多 4 行
-    blocks = []
-    current_block = []
-
-    for line in lyrics.splitlines():
-        line = line.strip()
-        if line == '':
-            if current_block:
-                blocks.append(current_block)
-                current_block = []
-        else:
-            current_block.append(line)
-            if len(current_block) == 4:
-                blocks.append(current_block)
-                current_block = []
-
-    if current_block:
-        blocks.append(current_block)
-
-    for block in blocks:
-        add_lyrics_slide(block)
+    # 每段落处理，每段最多 4 行，超过继续分页
+    for para in paragraphs:
+        for i in range(0, len(para), 4):
+            add_lyrics_slide(para[i:i + 4])
 
     output = io.BytesIO()
     prs.save(output)
