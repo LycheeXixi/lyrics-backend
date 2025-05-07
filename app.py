@@ -21,8 +21,6 @@ def generate_ppt():
     singer = data.get("singer", "").strip()
     lyrics = data.get("lyrics", "").strip()
 
-    lines = [line.strip() for line in lyrics.splitlines() if line.strip()]
-
     prs = Presentation()
     prs.slide_width = Inches(13.33)  # 16:9
     prs.slide_height = Inches(7.5)
@@ -32,7 +30,6 @@ def generate_ppt():
         slide.background.fill.solid()
         slide.background.fill.fore_color.rgb = RGBColor(0, 0, 0)
 
-        # 中央文字方塊
         txBox = slide.shapes.add_textbox(Inches(1), Inches(2), Inches(11.33), Inches(3.5))
         tf = txBox.text_frame
         tf.word_wrap = True
@@ -78,12 +75,30 @@ def generate_ppt():
             run.font.name = 'Microsoft JhengHei'
             run.font.color.rgb = RGBColor(255, 255, 255)
 
-    # 先插入封面
+    # 插入封面
     add_cover_slide(title, lyricist, composer, singer)
 
-    # 接著每 4 行歌詞一頁
-    for i in range(0, len(lines), 4):
-        add_lyrics_slide(lines[i:i+4])
+    # 分段：空行代表换页，每页最多 4 行
+    blocks = []
+    current_block = []
+
+    for line in lyrics.splitlines():
+        line = line.strip()
+        if line == '':
+            if current_block:
+                blocks.append(current_block)
+                current_block = []
+        else:
+            current_block.append(line)
+            if len(current_block) == 4:
+                blocks.append(current_block)
+                current_block = []
+
+    if current_block:
+        blocks.append(current_block)
+
+    for block in blocks:
+        add_lyrics_slide(block)
 
     output = io.BytesIO()
     prs.save(output)
